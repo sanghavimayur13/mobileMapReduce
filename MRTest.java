@@ -8,9 +8,10 @@ public class MRTest extends mapreduce.Mapper<String, Integer, Integer> {
 	}
 
 	public HashMap<String, Integer> map(File resource) {
-		emit("resource", 1);
+		emit("resource", 2);
 		emit("dog", 5);
 		emit("hair", 1);
+		try { Thread.sleep(5000); } catch (Exception e) {}
 		return null;
 	}
 
