@@ -1,4 +1,4 @@
-package mapreduce;
+package mapreduce.master;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -9,6 +9,9 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import mapreduce.Mapper;
+import mapreduce.Utils;
 
 public class MasterJob<K extends Serializable, 
 					   IV extends Serializable,
@@ -129,17 +132,27 @@ public class MasterJob<K extends Serializable,
 	protected void coordinateKeysOnWorkers(){
 
 		int wIdx = 0;
+		
+		// use this array to count out the messages intended for each worker
+		int maxID = findMaxWorker();
+		int[] counts = new int[maxID+1];
+		for(int i = 0; i < counts.length; i++)
+			counts[i] = 0;
 
 		for (K key : keyToWorkers.keySet()) {
 			// TODO use a heap for load balancing so worker with most keys gets his largest key to analyze, etc 
+			// andoid metrics for assigning jobs
 			WorkerConnection receiver = jobWorkers.get(wIdx);
 			// message contains key, ipaddress and port to send 
 			Object[] transferMessage = new Object[] { key,  
 					receiver.clientSocket.getInetAddress().getHostAddress(),
 					receiver.workerPort }; 
 			for (Integer workerID : keyToWorkers.get(key))
-				if (receiver.id != workerID)
+				if (receiver.id != workerID) {  // this key will be transferred out of the worker
 					addTransferMessage(workerID, transferMessage);
+					// need to count how many transfers this worker can expect
+					counts[receiver.id]++;
+				}
 			// for now go around in a circle assigning keys
 			if (++wIdx == jobWorkers.size())
 				wIdx = 0;
@@ -151,12 +164,22 @@ public class MasterJob<K extends Serializable,
 			if (!workerToKeyMessages.containsKey(wc.id)) 
 				workerToKeyMessages.put(wc.id, new ArrayList<Object[]>());
 
-		// notify each worker of their assigned keys
+		// notify each worker of the number of their assigned keys
+		// and where to send keys not assigned to them
 		for (Map.Entry<Integer, List<Object[]>> entry : workerToKeyMessages.entrySet()) {
 			WorkerConnection wc = master.getWorker(entry.getKey());
 			Utils.writeCommand(wc.out, Utils.M2W_COORD_KEYS, jobID);
-			Utils.writeObject(wc.out, entry.getValue());
+			Utils.writeInt(wc.out, counts[wc.id]);  // tell worker how many messages to expect
+			Utils.writeObject(wc.out, entry.getValue());  // tell worker where to send his other keys
 		}
+	}
+	
+	private int findMaxWorker() {
+		int max = 0;
+		for( WorkerConnection wc : jobWorkers)
+			if (wc.id > max)
+				max = wc.id;
+		return max;
 	}
 	
 	//////////////////////////////////////////////////////////

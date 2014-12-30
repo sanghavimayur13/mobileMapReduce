@@ -1,4 +1,4 @@
-package mapreduce;
+package mapreduce.worker;
 //******************************************************************************
 //File:    Worker.java
 //Package: None
@@ -15,6 +15,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+
+import mapreduce.Mapper;
+import mapreduce.SocketClient;
+import mapreduce.Utils;
 
 /**
  * This class parses command-line input in order to register client as a worker in a 
@@ -51,7 +55,7 @@ public class Worker extends SocketClient implements Runnable {
 			System.exit(1);
 		} 
     	// inform Master of your P2P port number, send it in place of a jobID
-    	Utils.writeCommand(out, Utils.W2M_WP2P_PORT, Utils.BASE_WP2P_PORT+id);
+    	Utils.writeCommand(getOut(), Utils.W2M_WP2P_PORT, Utils.BASE_WP2P_PORT+id);
     	basePath = Utils.basePath + File.separator + id;
     	baseDir = new File(basePath);
     	if (!baseDir.isDirectory())
@@ -113,21 +117,21 @@ public class Worker extends SocketClient implements Runnable {
     		String[] names = new String[filesList.length];
     		for(int i=0; i < filesList.length; i++)
     			names[i] = filesList[i].getName();
-    		Utils.writeCommand(out, Utils.M2W_REQ_LIST_OKAY, Utils.NONE);
-        	Utils.writeFilenames(out, names);
+    		Utils.writeCommand(getOut(), Utils.M2W_REQ_LIST_OKAY, Utils.NONE);
+        	Utils.writeFilenames(getOut(), names);
     	}
     	else {
-    		Utils.writeCommand(out, Utils.M2W_REQ_LIST_OKAY, Utils.NONE);
-    		Utils.writeFilenames(out, new String[0]);
+    		Utils.writeCommand(getOut(), Utils.M2W_REQ_LIST_OKAY, Utils.NONE);
+    		Utils.writeFilenames(getOut(), new String[0]);
     	}
     }
     
     protected void receiveNewJob(int jobID) throws IOException {
     	System.out.print("Worker received new MR job: ");
-		Mapper<?, ?, ?> mr = loadMRFile(Utils.receiveFile(in, basePath + File.separator));
+		Mapper<?, ?, ?> mr = loadMRFile(Utils.receiveFile(getIn(), basePath + File.separator));
 		if (mr != null) {
-			Utils.writeCommand(out, Utils.ACK, jobID);  // notify master, next message received is the file listing
-			List<String> names = Utils.readFilenames(in);
+			Utils.writeCommand(getOut(), Utils.ACK, jobID);  // notify master, next message received is the file listing
+			List<String> names = Utils.readFilenames(getIn());
 			// Master can sent empty list is no local files are wanted
 			// filename of 'all' means to use all local files
 			if (!names.isEmpty() && names.get(0).equals(Utils.ALL))  
@@ -139,17 +143,15 @@ public class Worker extends SocketClient implements Runnable {
     }
     
     public void jobComplete(int jobID) {
-    	// TODO bug that this happens before reduction if a cluster node is given no files to operate on
-    	// somehow there is a race condition in the control flow
-    	//jobs.remove(jobID);
+    	jobs.remove(jobID);
     }
     
     public void run() {
     	int command;
     	while(!isStopped()) {
     		try {
-    			if ((command = in.read()) != -1) {
-    				int jobID = Utils.readInt(in);
+    			if ((command = getIn().read()) != -1) {
+    				int jobID = Utils.readInt(getIn());
     				switch(command) {
     				case Utils.MR_QUIT:  //quit command
     		    		this.closeConnection();
@@ -164,7 +166,7 @@ public class Worker extends SocketClient implements Runnable {
     					receiveNewJob(jobID);
     					break;
     				case Utils.M2W_FILE:
-    					Utils.receiveFile(in, basePath + File.separator);
+    					Utils.receiveFile(getIn(), basePath + File.separator);
     					break;
     				case Utils.M2W_REQ_LIST:  // master is requesting file list
     					sendFilesList(baseDir);

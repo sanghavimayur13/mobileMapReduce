@@ -1,9 +1,11 @@
-package mapreduce;
+package mapreduce.master;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Socket;
+
+import mapreduce.Utils;
 
 public class WorkerConnection extends Thread {
 

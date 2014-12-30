@@ -1,4 +1,4 @@
-package mapreduce;
+package mapreduce.worker;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -6,6 +6,10 @@ import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+import mapreduce.Utils;
 
 /**
  * This class' object is used by the worker to communicate with other worker peers.
@@ -17,11 +21,13 @@ public class WorkerP2P extends Thread {
 	protected ServerSocket workerServerSocket;
 	protected Worker worker;
     protected boolean stopped;
+    protected ExecutorService exec;
     
     public WorkerP2P(int port, Worker worker) throws IOException {
     	this.stopped = false;
     	this.workerServerSocket = new ServerSocket(port);
     	this.worker = worker;
+		exec = Executors.newCachedThreadPool();
     	this.setDaemon(true);
     	this.start();
     }
@@ -38,11 +44,19 @@ public class WorkerP2P extends Thread {
 		try {
 			while(!isStopped()) {
 				Socket p2pSocket = workerServerSocket.accept();
-				int jobID = Utils.readInt(p2pSocket.getInputStream());
-				Object[] objArr = (Object[]) 
+				final int jobID = Utils.readInt(p2pSocket.getInputStream());
+				final Object[] objArr = (Object[]) 
 						new ObjectInputStream(p2pSocket.getInputStream()).readObject();
 				System.out.println("Job " + jobID + ": Received <" + objArr[0] + "> from " + p2pSocket);
-				worker.jobs.get(jobID).receiveKV(objArr[0], objArr[1]);
+				exec.execute(new Runnable() {
+	    			public void run() {
+	    				try {
+							worker.jobs.get(jobID).receiveKV(objArr[0], objArr[1]);
+						} catch (InterruptedException e) {
+							e.printStackTrace();
+						}
+	    			}
+				});
 			}
 		} catch (IOException | ClassNotFoundException e) {
 			if (isStopped()) // we intended to stop the server
@@ -76,6 +90,7 @@ public class WorkerP2P extends Thread {
 	 */
 	public synchronized void closeConnection(){
 		stopped = true;
+        this.exec.shutdown();
 		try {
 			workerServerSocket.close();
 		} catch (IOException e) {}  //ignore exceptions since you are closing

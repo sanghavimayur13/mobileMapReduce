@@ -1,4 +1,4 @@
-package mapreduce;
+package mapreduce.worker;
 
 import java.io.File;
 import java.io.IOException;
@@ -10,6 +10,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import mapreduce.Mapper;
+import mapreduce.Utils;
+
 public class Job<K extends Serializable, 
 				 IV extends Serializable,
 				 OV extends Serializable> {
@@ -19,7 +22,7 @@ public class Job<K extends Serializable,
 	protected Map<K, List<IV>> mapOutput;
 	protected Map<K, OV> finalOut;
 	protected List<String> files;
-	protected int jobID;
+	protected int jobID, transferCount, received;
 	
 	public Job(int jobID, Worker worker, Mapper<K, IV, OV> mr, List<String> data) {
 		this.jobID = jobID;
@@ -29,6 +32,7 @@ public class Job<K extends Serializable,
 		this.files = data;
 		mapOutput = new ConcurrentHashMap<>();
 		finalOut = new ConcurrentHashMap<>();
+		transferCount = -1; // -1 means uninitialized
 	}
 	
 	////////////////////////////////////////////////
@@ -69,11 +73,11 @@ public class Job<K extends Serializable,
 	
 	public void sendKeysToMaster() throws IOException {
 		for (K key: mapOutput.keySet()) {
-			Utils.writeCommand(worker.out, Utils.W2M_KEY, jobID);
-			Utils.writeObject(worker.out, new Object[]{key, mapOutput.get(key).size()});
-			worker.in.read();  // wait for ACK
+			Utils.writeCommand(worker.getOut(), Utils.W2M_KEY, jobID);
+			Utils.writeObject(worker.getOut(), new Object[]{key, mapOutput.get(key).size()});
+			worker.getIn().read();  // wait for ACK
 		}
-		Utils.writeCommand(worker.out, Utils.W2M_KEY_COMPLETE, jobID);
+		Utils.writeCommand(worker.getOut(), Utils.W2M_KEY_COMPLETE, jobID);
 	}
 	
 	////////////////////////////////////////////////
@@ -86,8 +90,15 @@ public class Job<K extends Serializable,
 	public void receiveKeyAssignments() {
 
 		try {
-			ObjectInputStream objInStream = new ObjectInputStream(worker.in);
+			// first find out from the Master how many key messages you will receive
+			transferCount = Utils.readInt(worker.getIn()); 
+			// if we received a key from a worker before receiving the count from master then
+			// those threads were put to sleep, need to wake them up
+			synchronized (this) { this.notifyAll(); }
+			System.out.printf("Receiving %d key messages%n", transferCount);
+			ObjectInputStream objInStream = new ObjectInputStream(worker.getIn());
 			List<Object[]> keyTransferMsg = (List<Object[]>) objInStream.readObject();
+			System.out.printf("Sending %d key messages%n", keyTransferMsg.size());
 			for (Object[] o : keyTransferMsg) {  // each object is { K, ipaddr, port} for where to send K
 				K k = (K) o[0];
 				String peerAddress = (String) o[1]; 
@@ -97,20 +108,27 @@ public class Job<K extends Serializable,
 				worker.wP2P.send(k, v, jobID, peerAddress, peerPort); //sends key and its value list as object[]
 			}
 			//A worker sends this message, so that master can keep track of workers who are ready for reduce
-			Utils.writeCommand(worker.out, Utils.W2M_KEYSHUFFLED, jobID);   
+			if (transferCount == 0)  //here we are done because we don't expect to receive any keys
+				Utils.writeCommand(worker.getOut(), Utils.W2M_KEYSHUFFLED, jobID);   
 		} catch (IOException | ClassNotFoundException e) {
 			e.printStackTrace();
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	public void receiveKV(Object k, Object v) {
+	public void receiveKV(Object k, Object v) throws InterruptedException {
 		K key = (K) k; 
 		List<IV> valList = (List<IV>) v;
 		if (mapOutput.containsKey(key))
 			mapOutput.get(key).addAll(valList);
 		else
 			mapOutput.put(key, valList);
+		// can't continue until transferCount has been initialized
+		while (transferCount == -1)
+			synchronized(this) { this.wait(); }
+		// we have recieved all the messages we were expecting, notify the Master
+		if (--transferCount == 0)  
+			Utils.writeCommand(worker.getOut(), Utils.W2M_KEYSHUFFLED, jobID);
 	}
 	
 	////////////////////////////////////////////////
@@ -143,11 +161,11 @@ public class Job<K extends Serializable,
 	
 	public void sendResults() throws IOException {
 		for (Map.Entry<K, OV> e : finalOut.entrySet()) {
-			Utils.writeCommand(worker.out, Utils.W2M_RESULTS, jobID);
-			Utils.writeObject(worker.out, new Object[]{e.getKey(), e.getValue()});
-			worker.in.read();  // wait for ACK
+			Utils.writeCommand(worker.getOut(), Utils.W2M_RESULTS, jobID);
+			Utils.writeObject(worker.getOut(), new Object[]{e.getKey(), e.getValue()});
+			worker.getIn().read();  // wait for ACK
 		}
-		Utils.writeCommand(worker.out, Utils.W2M_JOBDONE, jobID);
+		Utils.writeCommand(worker.getOut(), Utils.W2M_JOBDONE, jobID);
 		// let worker know this job is completed
 		worker.jobComplete(this.jobID);
 	}

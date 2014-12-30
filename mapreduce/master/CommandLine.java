@@ -1,10 +1,12 @@
-package mapreduce;
+package mapreduce.master;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Scanner;
+
+import mapreduce.Utils;
 
 public class CommandLine extends Thread {
 

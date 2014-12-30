@@ -1,4 +1,4 @@
-package mapreduce;
+package mapreduce.client;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -6,8 +6,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 
-public class Client extends SocketClient {
+import mapreduce.SocketClient;
+import mapreduce.Utils;
 
+public class Client extends SocketClient {
+	
 	public Client(String[] args) {
 		super(args);
 	}
@@ -27,9 +30,9 @@ public class Client extends SocketClient {
 		try {
 			Path file = Paths.get(jobFile);
 			byte[] filedata = Files.readAllBytes(file);
-			Utils.writeFile(out, file.getFileName().toString(), filedata);
-			in.read();  // wait for reply from master before sending next message
-			Utils.writeFilenames(out, filePaths);
+			Utils.writeFile(getOut(), file.getFileName().toString(), filedata);
+			getIn().read();  // wait for reply from master before sending next message
+			Utils.writeFilenames(getOut(), filePaths);
 			System.out.printf("%s uploaded to Master server from Client %d%n", jobFile, id);
 			closeConnection();
 		} catch (IOException e) {
@@ -39,6 +42,9 @@ public class Client extends SocketClient {
 		
 	public static void main(String[] args) {
 		//send a file from Desktop to the Master
+		if (args.length < 1)
+			new Client(args).usageTemplate();
+			
 		String job = args[0];
 		ArrayList<String> jobFiles = new ArrayList<>();
 		ArrayList<String> clientArgs = new ArrayList<>();

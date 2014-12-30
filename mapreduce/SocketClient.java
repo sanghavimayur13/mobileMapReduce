@@ -12,10 +12,10 @@ public class SocketClient {
 	protected int id;
 	protected int port = Utils.DEF_MASTER_PORT;  // default is a worker port
 	protected Socket socket;
-	protected OutputStream out;
-	protected InputStream in;
-    
-    /**
+	private OutputStream out;
+	private InputStream in;
+
+	/**
      * Constructor that makes a new SocketClient and attempts to register with 
      * the given hosname and port
      * 
@@ -28,9 +28,9 @@ public class SocketClient {
     		if (hostName.length() == 0) 
     			hostName = InetAddress.getLocalHost().getHostAddress();
     		socket = new Socket(hostName, port);
-            out = socket.getOutputStream();
-            in = socket.getInputStream();
-            id = in.read();  //first thing sent is a client ID
+            setOut(socket.getOutputStream());
+            setIn(socket.getInputStream());
+            id = getIn().read();  //first thing sent is a client ID
     		System.out.println(this + ": " + id);
     	}
 		catch (Exception e) {
@@ -40,10 +40,32 @@ public class SocketClient {
 		}
     }
 
+    public OutputStream getOut() {
+		return out;
+	}
+
+	public void setOut(OutputStream out) {
+		this.out = out;
+	}
+
+	/**
+	 * @return the in
+	 */
+	public InputStream getIn() {
+		return in;
+	}
+
+	/**
+	 * @param in the in to set
+	 */
+	public void setIn(InputStream in) {
+		this.in = in;
+	}
+    
     public synchronized void closeConnection() {
     	try {
-    		in.close();
-    		out.close();
+    		getIn().close();
+    		getOut().close();
     		socket.close();
     	} catch (IOException e) {} //ignore exceptions since you are quitting
     }

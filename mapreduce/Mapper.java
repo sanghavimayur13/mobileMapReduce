@@ -5,6 +5,8 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 
+import mapreduce.worker.Job;
+
 public abstract class Mapper<IK extends Serializable, 
 							 IV extends Serializable,
 							 OV extends Serializable> {
