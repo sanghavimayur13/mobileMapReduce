@@ -1,5 +1,11 @@
 package mapreduce.master;
 
+//******************************************************************************
+//File:    Worker.java
+//Package: None
+//Unit:    Distributed Programming Group Project
+//******************************************************************************
+
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;

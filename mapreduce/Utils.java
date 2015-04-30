@@ -293,6 +293,19 @@ public class Utils {
 		}
 	}
 
+	public static void writeFilenames(OutputStream out,String path, String[] args) {
+		try {
+			// first write the number of filenames that will be sent
+			out.write(Utils.intToByteArray(args.length));
+			for (String s : args)
+				out.write((path+"\\"+s + "\n").getBytes());
+			out.flush();
+		} catch (IOException e) {
+			debug("Exception in writing filenames to " + out.toString() + ": " + e);
+		}
+	}
+
+	
     public static void writeObject(OutputStream out, Object obj) {
     	try {
     		ObjectOutputStream objStream = new ObjectOutputStream(out);
