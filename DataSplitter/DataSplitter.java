@@ -23,19 +23,61 @@ public class DataSplitter {
 		
 	}
 	
-	public HashMap<String, Long> splitData(String... path){
+	public File[] splitData(File... path){
 		if(path.length == 1){
-			File dir = new File(path[0]);//It's a directory
-			if(dir.isDirectory()){
-				path = dir.list();
+			//It's a directory
+			if(path[0].isDirectory()){
+				path = path[0].listFiles();
 			}
 		}
-		HashMap<String, Long> sortedFiles = new HashMap<String, Long>();
+		Arrays.sort(path, new Comparator<File>(){
+			public int compare(File a, File b){
+				if(a.length() > b.length())
+					return 1;
+				else
+					return -1;
+			}
+		});
 		
+		return path;
+	}
+	
+	
+	public long calcSize(){
+		return 0;
+	}
+	
+	
+	public File[][] assignFile(int nodes, File... path){
+		int length = path.length / nodes;
+		if(path.length%nodes != 0){
+			length++;
+		}
+		File[][] assignment = new File[nodes][length];
+		for(int i=0;i<length;i++){
+			for(int j=0;j<nodes;j++){
+				
+			}
+		}
 		return null;
 	}
 	
+	
+	public void compareAssignment(File dir, int nodes){
+		File[] unsorted = dir.listFiles();
+		File[] sorted = splitData(dir);
+		
+	}
+	
+	
 	public static void main(String args[]){
 		System.out.println("Compiled");
+		if(args.length==1){
+			File dir = new File(args[0]);
+			if(dir.isDirectory()){
+				new DataSplitter().compareAssignment(dir,5);
+			}
+			
+		}
 	}
 }
