@@ -25,6 +25,8 @@ public class Job<K extends Serializable,
 	protected int jobID, transferCount, received;
 	
 	public Job(int jobID, Worker worker, Mapper<K, IV, OV> mr, List<String> data) {
+		
+		System.out.println("Here in Worker.Job.constructor.\nSize of data: "+data.size());
 		this.jobID = jobID;
 		this.worker = worker;
 		this.mr = mr;

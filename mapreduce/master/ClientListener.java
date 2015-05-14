@@ -51,7 +51,7 @@ public class ClientListener extends Thread {
 				MRFileName = Utils.receiveFile(in, master.basePath + File.separator);  // receive the MR java file
 				out.write(Utils.ACK);  // notify client you received it
 				List<String> filesToUse = Utils.readFilenames(in);  // receive files to operate on
-				master.receiveMRJob(MRFileName, filesToUse, false);
+				master.receiveMRJob(MRFileName, filesToUse, true);
 			} catch (Exception e) {
 				System.err.println("Exception while accepting client connection: " + e);
 			}

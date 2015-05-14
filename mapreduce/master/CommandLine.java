@@ -24,7 +24,7 @@ public class CommandLine extends Thread {
 	 */
 	public void run() {
 		System.out.println("#################################################");
-		System.out.println("#\t\tMAP-REDUCE FRAMEWORK\t\t#");
+		System.out.println("#\tMobile-MAP-REDUCE FRAMEWORK\t\t#");
 		System.out.println("#\t\t\t\t\t\t#");
 		try {
 			System.out.println("# Server:"+InetAddress.getLocalHost().getHostAddress()+"\t\t\t\t#");

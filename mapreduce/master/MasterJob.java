@@ -37,6 +37,8 @@ public class MasterJob<K extends Serializable,
 	
 	public MasterJob(int jobID, Mapper<K, IV, OV> mr, Master master, List<String> files, 
 			Collection<WorkerConnection> currentCluster) {
+		
+		System.out.println("Here in  Master.MasterJob.Constructor\nLength of files: "+files.size());
 		this.jobID = jobID;
 		this.master = master;
 		this.job = mr;

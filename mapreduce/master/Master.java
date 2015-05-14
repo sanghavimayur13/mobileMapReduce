@@ -246,6 +246,7 @@ public class Master extends Thread {
 					public void run() {
 						if (!wc.isStopped()) {
 							wc.sendFile(Utils.M2W_MR_UPLOAD, currJob, myFile.getFileName().toString(), byteArrOfFile);
+							System.out.println("Mstr.Mstr.recvMRJb\nSending "+myFile.getFileName().toString());
 						}
 					}
 				});

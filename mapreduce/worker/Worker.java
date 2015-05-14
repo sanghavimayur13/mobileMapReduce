@@ -132,6 +132,7 @@ public class Worker extends SocketClient implements Runnable {
 		if (mr != null) {
 			Utils.writeCommand(getOut(), Utils.ACK, jobID);  // notify master, next message received is the file listing
 			List<String> names = Utils.readFilenames(getIn());
+			System.out.println("Worker.RecvNewJb\nRecevived files: "+names.size());
 			// Master can sent empty list is no local files are wanted
 			// filename of 'all' means to use all local files
 			if (!names.isEmpty() && names.get(0).equals(Utils.ALL))  
