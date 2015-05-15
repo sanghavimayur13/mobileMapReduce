@@ -43,8 +43,11 @@ public class DataSplitter {
 	}
 	
 	
-	public long calcSize(){
-		return 0;
+	public long calcSize(File... path){
+		long size=0;
+		for(int i=0;i<path.length;i++)
+			size+=path[i].length();
+		return size;
 	}
 	
 	
@@ -54,19 +57,35 @@ public class DataSplitter {
 			length++;
 		}
 		File[][] assignment = new File[nodes][length];
+		int index = 0;
 		for(int i=0;i<length;i++){
 			for(int j=0;j<nodes;j++){
-				
+				if(index >= path.length){
+					break;
+				}
+				assignment[j][i] = path[index++];  
 			}
 		}
-		return null;
+		return assignment;
 	}
 	
 	
 	public void compareAssignment(File dir, int nodes){
 		File[] unsorted = dir.listFiles();
 		File[] sorted = splitData(dir);
-		
+		long[][] sizes = new long[2][nodes];
+		long totalU =0, totalS = 0;
+		for(int i=0;i<sorted.length;i++){
+			sizes[0][i%nodes]+= unsorted[i].length();
+			sizes[1][i%nodes]+= sorted[i].length();
+			totalU += unsorted[i].length();
+			totalS += sorted[i].length();
+					
+		}
+		for(int i=0;i<nodes;i++){
+			System.out.println("\t"+sizes[0][i]+"\t"+sizes[1][i]);
+		}
+		System.out.println("Total:\t"+totalU+"\t"+totalS);
 	}
 	
 	
